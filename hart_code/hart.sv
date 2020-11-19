@@ -21,9 +21,9 @@ typedef logic [4:0] rv_reg_t;
 `define FUNCT3_SH     3'b001
 `define FUNCT3_SW     3'b010
 
-module hart(clock, reset);
+module hart(clock, reset, current_state);
 	input logic clock, reset;
-	state_t current_state;
+	output state_t current_state;
 
 	logic [ILEN-1:0] instr_bits;
 	assign instr_bits = {

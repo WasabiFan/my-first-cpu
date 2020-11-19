@@ -1,7 +1,8 @@
 
 parameter XLEN = 32;
 parameter ILEN = 32;
-parameter total_memory = 1024 * 1024;
+parameter total_memory = 1024 * 1024; // 1 MiB
+
 // one register is x0
 parameter num_regs = 32;
 
