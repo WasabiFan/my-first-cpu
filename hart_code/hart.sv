@@ -1,6 +1,6 @@
 `include "common.sv"
 
-typedef enum { UNKNOWN, OP_IMM, OP_LOAD, OP_STORE } opcode_t;
+typedef enum { OP_UNKNOWN, OP_IMM, OP_LOAD, OP_STORE } opcode_t;
 
 typedef logic [4:0] rv_reg_t;
 
@@ -64,6 +64,8 @@ module hart(clock, reset);
 	logic [XLEN-1:0] store_val;
 
 	logic [15:0] lh_input_raw_val;
+	// TODO: hack to get around Quartus' inability to handle concatenation as an expression
+	assign lh_input_raw_val = { current_state.ram[i_effective_addr+1], current_state.ram[i_effective_addr] };
 
 	always_comb begin
 		// field_opcode[1:0] are always 11
@@ -71,9 +73,13 @@ module hart(clock, reset);
 			`OPCODE_OP_IMM: opcode = OP_IMM;
 			`OPCODE_LOAD: opcode = OP_LOAD;
 			`OPCODE_STORE: opcode = OP_STORE;
-			default: opcode = UNKNOWN;
+			default: opcode = OP_UNKNOWN;
 		endcase
-
+	end
+	
+	always_comb begin
+		rd_out_val = 'x;
+		store_val = 'x;
 		case (opcode)
 			OP_IMM: begin
 				case (funct3)
@@ -82,8 +88,6 @@ module hart(clock, reset);
 				endcase
 			end
 			OP_LOAD: begin
-				// TODO: hack to get around Quartus' inability to handle concatenation as an expression
-				lh_input_raw_val = { current_state.ram[i_effective_addr+1], current_state.ram[i_effective_addr] };
 				case (funct3)
 					`FUNCT3_LB: rd_out_val = `SIGEXT(  current_state.ram[i_effective_addr], 8, XLEN);
 					`FUNCT3_LH: rd_out_val = `SIGEXT(lh_input_raw_val, 16, XLEN);
@@ -94,6 +98,7 @@ module hart(clock, reset);
 			OP_STORE: begin
 				store_val = current_state.xregs[rs2];
 			end
+			OP_UNKNOWN: begin /* Do nothing */ end
 		endcase
 	end
 
@@ -103,39 +108,39 @@ module hart(clock, reset);
 			// 00500793                li      a5,5
 			// 00178793                addi    a5,a5,1
 			// fff78793                addi    a5,a5,-1
-			current_state.ram[3:0] = {
+			current_state.ram[3:0] = '{
 					8'h00, 8'h50, 8'h07, 8'h93 // li a5,5
 			};
-			current_state.ram[7:4] = {
+			current_state.ram[7:4] = '{
 					8'h00, 8'h17, 8'h87, 8'h93 // addi a5,a5,1
 			};
-			current_state.ram[11:8] = {
+			current_state.ram[11:8] = '{
 					8'hff, 8'hf7, 8'h87, 8'h93 // addi a5,a5,-1
 			};
 
 			// 06000793                li      a5,96
 			// 00a00713                li      a4,10
 			// 00e7a023                sw      a4,0(a5)
-			current_state.ram[15:12] = {
+			current_state.ram[15:12] = '{
 					8'h06, 8'h00, 8'h07, 8'h93 // li a5,96
 			};
-			current_state.ram[19:16] = {
+			current_state.ram[19:16] = '{
 					8'h00, 8'ha0, 8'h07, 8'h13 // li a4,10
 			};
-			current_state.ram[23:20] = {
+			current_state.ram[23:20] = '{
 					8'h00, 8'he7, 8'ha0, 8'h23 // sw a4,0(a5)
 			};
 
 			// 0007a703                lw      a4,0(a5)
 			// 00170713                addi    a4,a4,1
 			// 00e7a023                sw      a4,0(a5)
-			current_state.ram[27:24] = {
+			current_state.ram[27:24] = '{
 					8'h00, 8'h07, 8'ha7, 8'h03 // lw a4,0(a5)
 			};
-			current_state.ram[31:28] = {
+			current_state.ram[31:28] = '{
 					8'h00, 8'h17, 8'h07, 8'h13 // addi a4,a4,1
 			};
-			current_state.ram[35:32] = {
+			current_state.ram[35:32] = '{
 					8'h00, 8'he7, 8'ha0, 8'h23 // sw a4,0(a5)
 			};
 			current_state.pc = 0;
@@ -153,6 +158,7 @@ module hart(clock, reset);
 							`FUNCT3_SW: { current_state.ram[s_effective_addr+3], current_state.ram[s_effective_addr+2], current_state.ram[s_effective_addr+1], current_state.ram[s_effective_addr]} = store_val[31:0];
 						endcase
 					end
+					OP_UNKNOWN: begin /* Do nothing */ end
 			endcase
 			current_state.pc += 4;
 		end
