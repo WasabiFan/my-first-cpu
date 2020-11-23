@@ -1,6 +1,8 @@
 // `include "common.sv"
 `include "isa.sv"
 
+`timescale 1 ns / 1 ns
+
 import isa_types::*;
 
 module hart(clock, reset, reg_state);
@@ -27,36 +29,41 @@ module hart(clock, reset, reg_state);
 	instruction_decoder instr_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_imm_input, s_imm_input);
 
 	logic mem_wenable;
-   logic [XLEN-1:0] mem_waddr, mem_raddr;
+   logic [XLEN-1:0] mem_addr;
    logic [XLEN-1:0] mem_wdata, mem_rdata;
    write_width_t mem_wwidth;
-	memory mem(clock, mem_waddr, mem_raddr, mem_wwidth, mem_wenable, mem_wdata, mem_rdata);
+	memory mem(clock, mem_addr, mem_wwidth, mem_wenable, mem_wdata, mem_rdata);
 
-	// memory read controller
-	always_comb begin
-		case (stage)
-			STAGE_INSTRUCTION_FETCH: begin
-				mem_raddr = reg_state.pc;
-			end
-		endcase
-	end
+	assign mem_wenable = 1;
+	assign mem_addr = 0;
+	assign mem_wdata = 12345;
+	assign mem_wwidth = write_word;
+
+	// memory controller
+	// always_comb begin
+	// 	case (stage)
+	// 		STAGE_INSTRUCTION_FETCH: begin
+	// 			mem_addr = reg_state.pc;
+	// 		end
+	// 	endcase
+	// end
 
 	// memory write controller
-	always_comb begin
-		mem_wenable = 0;
-		mem_waddr = 'X;
-		mem_wwidth = write_byte; // don't care
-		mem_wdata = 'X;
-		if (is_resetting) begin
-			mem_wenable = 1;
-			mem_waddr = reset_addr;
-			mem_wwidth = write_byte;
-			case (reset_addr)
-				32'h00:  mem_wdata = 32'h12345678;
-				default: mem_wdata = 32'h00000000;
-			endcase
-		end
-	end
+	// always_comb begin
+	// 	mem_wenable = 0;
+	// 	mem_waddr = 'X;
+	// 	mem_wwidth = write_byte; // don't care
+	// 	mem_wdata = 'X;
+	// 	if (is_resetting) begin
+	// 		mem_wenable = 1;
+	// 		mem_waddr = reset_addr;
+	// 		mem_wwidth = write_byte;
+	// 		case (reset_addr)
+	// 			32'h00:  mem_wdata = 32'h12345678;
+	// 			default: mem_wdata = 32'h00000000;
+	// 		endcase
+	// 	end
+	// end
 
 	// logic [XLEN-1:0] i_effective_addr, s_effective_addr;
 	// assign i_effective_addr = i_imm_input + reg_state.xregs[rs1];
