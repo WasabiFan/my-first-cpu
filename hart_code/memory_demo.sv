@@ -20,7 +20,7 @@ module memory_demo (CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW)
 	logic [31:0] big_counter;
 	always_ff @(posedge CLOCK_50) begin
 		if (~KEY[1]) big_counter = 0;
-		else big_counter += 1;
+		else         big_counter += 1;
 	end
 
 	logic mem_wenable;
@@ -34,8 +34,8 @@ module memory_demo (CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW)
 
 	assign mem_wenable = ~KEY[0];
 	assign mem_wwidth = write_byte;
-	assign mem_addr = SW[7:0];
-	assign mem_wdata = big_counter[19:12];
+	assign mem_addr = SW[9:0];
+	assign mem_wdata = big_counter[23:16];
 
    assign LEDR[7:0] = mem_rdata[7:0];
 endmodule

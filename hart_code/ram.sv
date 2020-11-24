@@ -18,8 +18,9 @@ module ram (clock, addr, wwidth, wenable, wdata, rdata);
    end
 
    logic [7:0] word_addr;
-   logic [XLEN-1:0] effective_wdata, effective_rdata;
+   assign word_addr = addr[9:2];
 
+   logic [XLEN-1:0] effective_wdata, effective_rdata;
    logic [3:0] be;
    always_comb begin
       case (wwidth)
@@ -35,8 +36,6 @@ module ram (clock, addr, wwidth, wenable, wdata, rdata);
       // changes after the read occurs.
       rdata = effective_rdata >> (addr_offset * 8);
    end
-
-   assign word_addr = addr[9:2];
 
    internal_ram ram (
       word_addr,
