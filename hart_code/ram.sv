@@ -5,7 +5,7 @@ import isa_types::*;
 
 `timescale 1 ns / 1 ns
 
-module memory (clock, addr, wwidth, wenable, wdata, rdata);
+module ram (clock, addr, wwidth, wenable, wdata, rdata);
    input logic clock, wenable;
    input logic [XLEN-1:0] addr;
    input write_width_t wwidth;
@@ -48,14 +48,14 @@ module memory (clock, addr, wwidth, wenable, wdata, rdata);
    );
 endmodule
 
-module memory_testbench();
+module ram_testbench();
 	logic clk;
 
 	logic mem_wenable;
    logic [XLEN-1:0] mem_addr;
    logic [XLEN-1:0] mem_wdata, mem_rdata;
    write_width_t mem_wwidth;
-	memory mem(clk, mem_addr, mem_wwidth, mem_wenable, mem_wdata, mem_rdata);
+	ram mem(clk, mem_addr, mem_wwidth, mem_wenable, mem_wdata, mem_rdata);
 
 	// Set up the clock
 	parameter CLOCK_PERIOD=100;
