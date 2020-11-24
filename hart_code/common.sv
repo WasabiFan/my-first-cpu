@@ -19,4 +19,4 @@ package isa_types;
         write_halfword,
         write_word
     } write_width_t;
-endpackage;
+endpackage
