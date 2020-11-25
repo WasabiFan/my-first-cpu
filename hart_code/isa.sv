@@ -3,6 +3,11 @@
 
 `define OPCODE_LUI     5'b01101
 
+`define OPCODE_JAL     5'b11011
+`define OPCODE_JALR    5'b11001
+// JALR does use I encoding and thus has a funct3 (0), but shares opcode with no other
+// instructions.
+
 `define OPCODE_OP_IMM  5'b00100
 `define FUNCT3_ADDI    3'b000
 

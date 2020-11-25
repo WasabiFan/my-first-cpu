@@ -38,8 +38,8 @@ module hart(clock, reset, reg_state);
 	rv_reg_t rs1, rs2, rd;
 	logic [2:0] funct3;
 	logic [6:0] funct7;
-	logic [XLEN-1:0] i_imm_input, s_imm_input, u_imm_input;
-	instruction_decoder instr_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_imm_input, s_imm_input, u_imm_input);
+	logic [XLEN-1:0] i_imm_input, s_imm_input, u_imm_input, j_imm_input;
+	instruction_decoder instr_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_imm_input, s_imm_input, u_imm_input, j_imm_input);
 
 	// Computed addresses for memory instructions
 	logic [XLEN-1:0] i_effective_addr, s_effective_addr;
@@ -91,10 +91,17 @@ module hart(clock, reset, reg_state);
 	// Value to be stored in register rd upon conclusion of writeback stage (LOAD, OP_IMM)
 	logic [XLEN-1:0] rd_out_val;
 
+	logic is_jumping;
+	logic [XLEN-1:0] jump_target;
+
 	// Computation for writeback
 	always_comb begin
 		rd_out_val = 'x;
 		store_val = 'x;
+
+		is_jumping = 1'b0;
+		jump_target = 'x;
+
 		case (opcode)
 			OPCODE_OP_IMM: case (funct3)
 				`FUNCT3_ADDI: rd_out_val = i_imm_input + reg_state.xregs[rs1];
@@ -110,6 +117,18 @@ module hart(clock, reset, reg_state);
 					endcase
 					default: rd_out_val = 'X;
 				endcase
+			end
+
+			OPCODE_JAL: begin
+				rd_out_val = reg_state.pc + 4;
+				is_jumping = 1'b1;
+				jump_target = reg_state.pc + j_imm_input;
+			end
+
+			OPCODE_JALR: begin
+				rd_out_val = reg_state.pc + 4;
+				is_jumping = 1'b1;
+				jump_target = { i_effective_addr[31:1], 1'b0 };
 			end
 
 			OPCODE_LUI: rd_out_val = u_imm_input;
@@ -161,7 +180,8 @@ module hart(clock, reset, reg_state);
 			end
 			STAGE_WRITEBACK: begin
 				next_stage = STAGE_INSTRUCTION_FETCH;
-				next_pc = reg_state.pc + 4;
+				if (is_jumping) next_pc = jump_target;
+				else            next_pc = reg_state.pc + 4;
 				next_remaining_read_cycles = READ_CYCLE_LATENCY;
 			end
 		endcase
@@ -187,7 +207,9 @@ module hart(clock, reset, reg_state);
 				end
 				STAGE_WRITEBACK: begin
 					case (opcode)
-							OPCODE_OP_IMM, OPCODE_OP, OPCODE_LUI, OPCODE_LOAD: begin
+							OPCODE_OP_IMM, OPCODE_OP,
+							OPCODE_JAL, OPCODE_JALR,
+							OPCODE_LUI, OPCODE_LOAD: begin
 								if (rd) // "if" prevents writing to x0
 									reg_state.xregs[rd] <= rd_out_val;
 							end
@@ -221,7 +243,7 @@ module hart_testbench();
 		@(posedge clk); reset <= 1;
 		@(posedge clk); reset <= 0;
 
-		repeat (100) begin
+		repeat (140) begin
 			@(posedge clk);
 		end
 
