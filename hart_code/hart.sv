@@ -7,14 +7,14 @@ import isa_types::*;
 
 module hart(clock, reset, reg_state);
 	input logic clock, reset;
-	output state_t reg_state;
+	output reg_state_t reg_state;
 
 	// Address of first byte which _isn't_ valid on the stack; used to initialize sp.
 	// The program will begin by allocating space, so this should never be accessed.
 	localparam STACK_START = 32'hc00;
 	// TODO: having stuff start at address 0 is definitely bad
 	localparam RESET_VECTOR = 32'h0;
-	localparam READ_CYCLE_LATENCY = 2;
+	localparam READ_CYCLE_LATENCY = 2'd2;
 
 	logic [1:0] remaining_read_cycles, next_remaining_read_cycles;
 	enum logic [1:0] {
@@ -140,19 +140,22 @@ module hart(clock, reset, reg_state);
 			STAGE_INSTRUCTION_FETCH: begin
 				if (remaining_read_cycles) begin
 					next_stage = STAGE_INSTRUCTION_FETCH;
-					next_remaining_read_cycles = remaining_read_cycles - 1;
+					next_remaining_read_cycles = remaining_read_cycles - 2'd1;
 				end else begin
-					if (opcode == OPCODE_LOAD) next_stage = STAGE_LOAD;
-					else 						  next_stage = STAGE_WRITEBACK;
+					// If the next instruction is an unknown opcode, stall in this state
+					// forever (in essence, halt)
+					if (opcode == OPCODE_UNKNOWN)   next_stage = STAGE_INSTRUCTION_FETCH;
+					else if (opcode == OPCODE_LOAD) next_stage = STAGE_LOAD;
+					else                            next_stage = STAGE_WRITEBACK;
 					next_remaining_read_cycles = READ_CYCLE_LATENCY;
 				end
 			end
 			STAGE_LOAD: begin
 				if (remaining_read_cycles) next_stage = STAGE_LOAD;
 				else                       next_stage = STAGE_WRITEBACK;
-				next_remaining_read_cycles = remaining_read_cycles - 1;
+				next_remaining_read_cycles = remaining_read_cycles - 2'd1;
 			end
-			STAGE_WRITEBACK: begin 
+			STAGE_WRITEBACK: begin
 				next_stage = STAGE_INSTRUCTION_FETCH;
 				next_pc = reg_state.pc + 4;
 				next_remaining_read_cycles = READ_CYCLE_LATENCY;
@@ -199,7 +202,7 @@ endmodule
 module hart_testbench();
 	logic clk, reset;
 
-	state_t reg_state;
+	reg_state_t reg_state;
 	hart dut (clk, reset, reg_state);
 
 	// Set up the clock
@@ -214,7 +217,7 @@ module hart_testbench();
 		@(posedge clk); reset <= 1;
 		@(posedge clk); reset <= 0;
 
-		repeat (92) begin
+		repeat (100) begin
 			@(posedge clk);
 		end
 
