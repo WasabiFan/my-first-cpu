@@ -17,10 +17,11 @@ module instruction_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_
 	always_comb begin
 		// field_opcode[1:0] are always 11
 		case (field_opcode[6:2])
-			`OPCODE_OP_IMM: opcode = OP_IMM;
-			`OPCODE_LOAD: opcode = OP_LOAD;
-			`OPCODE_STORE: opcode = OP_STORE;
-			default: opcode = OP_UNKNOWN;
+			`OPCODE_OP_IMM: opcode = OPCODE_OP_IMM;
+			`OPCODE_OP:     opcode = OPCODE_OP;
+			`OPCODE_LOAD:   opcode = OPCODE_LOAD;
+			`OPCODE_STORE:  opcode = OPCODE_STORE;
+			default:        opcode = OPCODE_UNKNOWN;
 		endcase
 	end
 

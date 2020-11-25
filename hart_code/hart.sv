@@ -75,12 +75,12 @@ module hart(clock, reset, reg_state);
 				// In theory, it should be impossible to get into the "load" stage unless the
 				// opcode was LOAD, but... better safe than thoroughly confused.
 				case (opcode)
-					OP_LOAD: mem_addr = i_effective_addr;
+					OPCODE_LOAD: mem_addr = i_effective_addr;
 				endcase
 			end
 			STAGE_WRITEBACK: begin
 				case (opcode)
-					OP_STORE: begin
+					OPCODE_STORE: begin
 						mem_addr = s_effective_addr;
 						mem_wenable = 1'b1;
 						mem_wdata = store_val;
@@ -103,24 +103,32 @@ module hart(clock, reset, reg_state);
 		rd_out_val = 'x;
 		store_val = 'x;
 		case (opcode)
-			OP_IMM: begin
+			OPCODE_OP_IMM: begin
 				case (funct3)
 					`FUNCT3_ADDI: rd_out_val = i_imm_input + reg_state.xregs[rs1];
 					default: rd_out_val = 'x;
 				endcase
 			end
-			OP_LOAD: begin
+
+			OPCODE_OP: begin
 				case (funct3)
-					`FUNCT3_LB: rd_out_val = `SIGEXT( load_val, 8, XLEN);
-					`FUNCT3_LH: rd_out_val = `SIGEXT( load_val, 16, XLEN);
-					`FUNCT3_LW: rd_out_val = load_val;
-					default: rd_out_val = 'x;
+					`FUNCT3_ADD_SUB: case (funct7)
+						`FUNCT7_ADD: rd_out_val = reg_state.xregs[rs1] + reg_state.xregs[rs2];
+						`FUNCT7_SUB: rd_out_val = reg_state.xregs[rs1] - reg_state.xregs[rs2];
+					endcase
 				endcase
 			end
-			OP_STORE: begin
+
+			OPCODE_LOAD: case (funct3)
+				`FUNCT3_LB: rd_out_val = `SIGEXT( load_val, 8, XLEN);
+				`FUNCT3_LH: rd_out_val = `SIGEXT( load_val, 16, XLEN);
+				`FUNCT3_LW: rd_out_val = load_val;
+			endcase
+
+			OPCODE_STORE: begin
 				store_val = reg_state.xregs[rs2];
 			end
-			OP_UNKNOWN: begin /* Do nothing */ end
+			OPCODE_UNKNOWN: begin /* Do nothing */ end
 		endcase
 	end
 
@@ -134,7 +142,7 @@ module hart(clock, reset, reg_state);
 					next_stage = STAGE_INSTRUCTION_FETCH;
 					next_remaining_read_cycles = remaining_read_cycles - 1;
 				end else begin
-					if (opcode == OP_LOAD) next_stage = STAGE_LOAD;
+					if (opcode == OPCODE_LOAD) next_stage = STAGE_LOAD;
 					else 						  next_stage = STAGE_WRITEBACK;
 					next_remaining_read_cycles = READ_CYCLE_LATENCY;
 				end
@@ -172,12 +180,12 @@ module hart(clock, reset, reg_state);
 				end
 				STAGE_WRITEBACK: begin
 					case (opcode)
-							OP_IMM, OP_LOAD: begin
+							OPCODE_OP_IMM, OPCODE_OP, OPCODE_LOAD: begin
 								if (rd) // "if" prevents writing to x0
 									reg_state.xregs[rd] <= rd_out_val;
 							end
-							OP_STORE: begin /* Do nothing */ end
-							OP_UNKNOWN: begin /* Do nothing */ end
+							OPCODE_STORE: begin /* Do nothing */ end
+							OPCODE_UNKNOWN: begin /* Do nothing */ end
 					endcase
 				end
 			endcase
@@ -206,7 +214,7 @@ module hart_testbench();
 		@(posedge clk); reset <= 1;
 		@(posedge clk); reset <= 0;
 
-		repeat (24) begin
+		repeat (34) begin
 			@(posedge clk); @(posedge clk);
 		end
 
