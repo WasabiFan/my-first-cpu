@@ -35,7 +35,8 @@ module memory (clock, addr, wwidth, wenable, wdata, rdata);
    end
 
    internal_rom rom (
-      rom_addr,
+      // Addresses are word-oriented; for ROM, we just don't support non-word-aligned reads.
+      rom_addr[10:2],
       clock,
       rom_rdata
    );

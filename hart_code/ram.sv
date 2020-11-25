@@ -105,6 +105,12 @@ module ram_testbench();
 		@(posedge clk);
 		@(posedge clk);
 
+      // Read from an entirely unrelated address to see read latency
+		@(posedge clk);                   mem_addr <= 32'h18;
+		@(posedge clk);
+		@(posedge clk);
+		@(posedge clk);
+
 		$stop; // End the simulation
 	end
 endmodule
