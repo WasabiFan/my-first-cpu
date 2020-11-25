@@ -13,11 +13,10 @@ module hart_demo (CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW);
 	assign HEX4 = 7'b1111111;
 	assign HEX5 = 7'b1111111;
 
-   state_t current_state;
+   reg_state_t reg_state;
+   hart cpu(CLOCK_50, KEY[0], reg_state);
 
-   hart cpu(CLOCK_50, KEY[0], current_state);
-
-   assign LEDR[7:0] = current_state.ram[96];
+   assign LEDR[9:0] = reg_state.xregs[10][9:0];
 endmodule
 
 // module hart_demo_testbench();

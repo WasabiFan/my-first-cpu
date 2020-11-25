@@ -11,20 +11,7 @@ module instruction_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_
 	output logic [6:0] funct7;
 	output logic [XLEN-1:0] i_imm_input, s_imm_input, u_imm_input;
 
-	logic [6:0] field_opcode;
-	assign field_opcode = instr_bits[6:0];
-
-	always_comb begin
-		// field_opcode[1:0] are always 11
-		case (field_opcode[6:2])
-			`OPCODE_LUI:    opcode = OPCODE_LUI;
-			`OPCODE_OP_IMM: opcode = OPCODE_OP_IMM;
-			`OPCODE_OP:     opcode = OPCODE_OP;
-			`OPCODE_LOAD:   opcode = OPCODE_LOAD;
-			`OPCODE_STORE:  opcode = OPCODE_STORE;
-			default:        opcode = OPCODE_UNKNOWN;
-		endcase
-	end
+	assign opcode = extract_opcode(instr_bits);
 
 	assign rd = instr_bits[11:7];
 	assign rs1 = instr_bits[19:15];

@@ -30,17 +30,8 @@ module hart(clock, reset, reg_state);
    write_width_t mem_wwidth;
 	memory mem(clock, mem_addr, mem_wwidth, mem_wenable, mem_wdata, mem_rdata);
 
-	// instr_bits is the bit pattern of the current instruction, no matter the stage.
-	// captured_instr_bits is the same, but only after STAGE_INSTRUCTION_FETCH is complete.
-	logic [ILEN-1:0] instr_bits, captured_instr_bits;
-	always_comb begin
-		// instr_bits is the value being fed into the instruction decoder. It is *usually*
-		// combinationally assigned to captured_instr_bits. However, when we're in the "fetch"
-		// stage, the loaded instruction informs the stage transition; thus, while in that
-		// instruction-fetching stage, instr_bits is a view of mem_rdata to let us "peek ahead".
-		if (stage == STAGE_INSTRUCTION_FETCH) instr_bits = mem_rdata;
-		else                                  instr_bits = captured_instr_bits;
-	end
+	// the bit pattern of the current instruction
+	logic [ILEN-1:0] instr_bits;
 
 	// Instruction decoder
 	opcode_t opcode;
@@ -76,6 +67,7 @@ module hart(clock, reset, reg_state);
 				// opcode was LOAD, but... better safe than thoroughly confused.
 				case (opcode)
 					OPCODE_LOAD: mem_addr = i_effective_addr;
+					default:     mem_addr = 'X;
 				endcase
 			end
 			STAGE_WRITEBACK: begin
@@ -88,6 +80,7 @@ module hart(clock, reset, reg_state);
 							`FUNCT3_SB: mem_wwidth = write_byte;
 							`FUNCT3_SH: mem_wwidth = write_halfword;
 							`FUNCT3_SW: mem_wwidth = write_word;
+							default:    mem_wwidth = write_byte; // don't care
 						endcase
 					end
 				endcase
@@ -113,7 +106,9 @@ module hart(clock, reset, reg_state);
 					`FUNCT3_ADD_SUB: case (funct7)
 						`FUNCT7_ADD: rd_out_val = reg_state.xregs[rs1] + reg_state.xregs[rs2];
 						`FUNCT7_SUB: rd_out_val = reg_state.xregs[rs1] - reg_state.xregs[rs2];
+						default:     rd_out_val = 'X;
 					endcase
+					default: rd_out_val = 'X;
 				endcase
 			end
 
@@ -123,6 +118,7 @@ module hart(clock, reset, reg_state);
 				`FUNCT3_LB: rd_out_val = `SIGEXT( load_val, 8, XLEN);
 				`FUNCT3_LH: rd_out_val = `SIGEXT( load_val, 16, XLEN);
 				`FUNCT3_LW: rd_out_val = load_val;
+				default:    rd_out_val = 'X;
 			endcase
 
 			OPCODE_STORE: begin
@@ -131,6 +127,10 @@ module hart(clock, reset, reg_state);
 			OPCODE_UNKNOWN: begin /* Do nothing */ end
 		endcase
 	end
+
+	// opcode computed from the current memory output, rather than the captured instr_bits
+	opcode_t speculative_opcode;
+	assign speculative_opcode = extract_opcode(mem_rdata);
 
 	// Stage progression logic (computes next values of state parameters)
 	logic [XLEN-1:0] next_pc;
@@ -142,11 +142,15 @@ module hart(clock, reset, reg_state);
 					next_stage = STAGE_INSTRUCTION_FETCH;
 					next_remaining_read_cycles = remaining_read_cycles - 2'd1;
 				end else begin
-					// If the next instruction is an unknown opcode, stall in this state
-					// forever (in essence, halt)
-					if (opcode == OPCODE_UNKNOWN)   next_stage = STAGE_INSTRUCTION_FETCH;
-					else if (opcode == OPCODE_LOAD) next_stage = STAGE_LOAD;
-					else                            next_stage = STAGE_WRITEBACK;
+					case (speculative_opcode)
+						// If the next instruction is an unknown opcode, stall in this state
+						// forever (in essence, halt)
+						OPCODE_UNKNOWN: next_stage = STAGE_INSTRUCTION_FETCH;
+						// LOAD instructions have an extra stage
+						OPCODE_LOAD:    next_stage = STAGE_LOAD;
+						// Every non-LOAD goes straight to the final stage
+						default:        next_stage = STAGE_WRITEBACK;
+					endcase
 					next_remaining_read_cycles = READ_CYCLE_LATENCY;
 				end
 			end
@@ -175,7 +179,7 @@ module hart(clock, reset, reg_state);
 			case (stage)
 				STAGE_INSTRUCTION_FETCH: begin
 					if (remaining_read_cycles == 0)
-						captured_instr_bits <= mem_rdata;
+						instr_bits <= mem_rdata;
 				end
 				STAGE_LOAD: begin
 					if (remaining_read_cycles == 0)
