@@ -3,13 +3,13 @@
 
 import isa_types::*;
 
-module instruction_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_imm_input, s_imm_input);
+module instruction_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_imm_input, s_imm_input, u_imm_input);
 	input logic [ILEN-1:0] instr_bits;
 	output opcode_t opcode;
 	output rv_reg_t rs1, rs2, rd;
 	output logic [2:0] funct3;
 	output logic [6:0] funct7;
-	output logic [XLEN-1:0] i_imm_input, s_imm_input;
+	output logic [XLEN-1:0] i_imm_input, s_imm_input, u_imm_input;
 
 	logic [6:0] field_opcode;
 	assign field_opcode = instr_bits[6:0];
@@ -17,6 +17,7 @@ module instruction_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_
 	always_comb begin
 		// field_opcode[1:0] are always 11
 		case (field_opcode[6:2])
+			`OPCODE_LUI:    opcode = OPCODE_LUI;
 			`OPCODE_OP_IMM: opcode = OPCODE_OP_IMM;
 			`OPCODE_OP:     opcode = OPCODE_OP;
 			`OPCODE_LOAD:   opcode = OPCODE_LOAD;
@@ -38,4 +39,5 @@ module instruction_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_
 
 	assign i_imm_input = `SIGEXT(i_imm_raw, 12, XLEN);
 	assign s_imm_input = `SIGEXT(s_imm_raw, 12, XLEN);
+	assign u_imm_input = { instr_bits[31:12], 12'b0 };
 endmodule

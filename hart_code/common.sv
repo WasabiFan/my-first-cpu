@@ -7,7 +7,14 @@ package isa_types;
 
     typedef logic [4:0] rv_reg_t;
 
-    typedef enum { OPCODE_UNKNOWN, OPCODE_OP_IMM, OPCODE_OP, OPCODE_LOAD, OPCODE_STORE } opcode_t;
+    typedef enum {
+        OPCODE_UNKNOWN,
+        OPCODE_LUI,
+        OPCODE_OP_IMM,
+        OPCODE_OP,
+        OPCODE_LOAD,
+        OPCODE_STORE
+    } opcode_t;
 
     typedef struct {
         logic [XLEN-1:0] pc;

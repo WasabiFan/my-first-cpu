@@ -1,6 +1,8 @@
 `define SIGEXT(VALUE, FROM, TO) { {(TO-FROM){VALUE[FROM-1]}}, VALUE[FROM-1:0] }
 `define ZEXT(VALUE, FROM, TO) { (TO-FROM)'b0, VALUE }
 
+`define OPCODE_LUI     5'b01101
+
 `define OPCODE_OP_IMM  5'b00100
 `define FUNCT3_ADDI    3'b000
 

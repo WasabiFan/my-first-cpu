@@ -47,8 +47,8 @@ module hart(clock, reset, reg_state);
 	rv_reg_t rs1, rs2, rd;
 	logic [2:0] funct3;
 	logic [6:0] funct7;
-	logic [XLEN-1:0] i_imm_input, s_imm_input;
-	instruction_decoder instr_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_imm_input, s_imm_input);
+	logic [XLEN-1:0] i_imm_input, s_imm_input, u_imm_input;
+	instruction_decoder instr_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_imm_input, s_imm_input, u_imm_input);
 
 	// Computed addresses for memory instructions
 	logic [XLEN-1:0] i_effective_addr, s_effective_addr;
@@ -103,12 +103,10 @@ module hart(clock, reset, reg_state);
 		rd_out_val = 'x;
 		store_val = 'x;
 		case (opcode)
-			OPCODE_OP_IMM: begin
-				case (funct3)
-					`FUNCT3_ADDI: rd_out_val = i_imm_input + reg_state.xregs[rs1];
-					default: rd_out_val = 'x;
-				endcase
-			end
+			OPCODE_OP_IMM: case (funct3)
+				`FUNCT3_ADDI: rd_out_val = i_imm_input + reg_state.xregs[rs1];
+				default: rd_out_val = 'x;
+			endcase
 
 			OPCODE_OP: begin
 				case (funct3)
@@ -118,6 +116,8 @@ module hart(clock, reset, reg_state);
 					endcase
 				endcase
 			end
+
+			OPCODE_LUI: rd_out_val = u_imm_input;
 
 			OPCODE_LOAD: case (funct3)
 				`FUNCT3_LB: rd_out_val = `SIGEXT( load_val, 8, XLEN);
@@ -180,7 +180,7 @@ module hart(clock, reset, reg_state);
 				end
 				STAGE_WRITEBACK: begin
 					case (opcode)
-							OPCODE_OP_IMM, OPCODE_OP, OPCODE_LOAD: begin
+							OPCODE_OP_IMM, OPCODE_OP, OPCODE_LUI, OPCODE_LOAD: begin
 								if (rd) // "if" prevents writing to x0
 									reg_state.xregs[rd] <= rd_out_val;
 							end
@@ -214,8 +214,8 @@ module hart_testbench();
 		@(posedge clk); reset <= 1;
 		@(posedge clk); reset <= 0;
 
-		repeat (34) begin
-			@(posedge clk); @(posedge clk);
+		repeat (92) begin
+			@(posedge clk);
 		end
 
 		$stop; // End the simulation

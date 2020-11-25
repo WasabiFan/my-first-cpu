@@ -4,7 +4,8 @@ int main() {
 	foo[1] = 6;
 	foo[2] = 9;
 	foo[0] = 3;
+	foo[3] = 1000000000;
 
-	int total = foo[0] + foo[1] + foo[2];
+	int total = foo[0] + foo[1] + foo[2] + foo[3];
 	return total;
 }
