@@ -38,8 +38,15 @@ module hart(clock, reset, reg_state);
 	rv_reg_t rs1, rs2, rd;
 	logic [2:0] funct3;
 	logic [6:0] funct7;
-	logic [XLEN-1:0] i_imm_input, s_imm_input, u_imm_input, j_imm_input;
-	instruction_decoder instr_decoder (instr_bits, opcode, rs1, rs2, rd, funct3, funct7, i_imm_input, s_imm_input, u_imm_input, j_imm_input);
+	logic [XLEN-1:0] i_imm_input, s_imm_input, u_imm_input, j_imm_input, b_imm_input;
+	instruction_decoder instr_decoder (
+		instr_bits,
+		opcode,
+		rs1, rs2, rd,
+		funct3, funct7,
+		i_imm_input, s_imm_input, u_imm_input,
+		j_imm_input, b_imm_input
+	);
 
 	// Computed addresses for memory instructions
 	logic [XLEN-1:0] i_effective_addr, s_effective_addr;
@@ -83,6 +90,7 @@ module hart(clock, reset, reg_state);
 							default:    mem_wwidth = write_byte; // don't care
 						endcase
 					end
+					default: begin /* Do nothing; default above is a non-write */ end
 				endcase
 			end
 		endcase
@@ -129,6 +137,15 @@ module hart(clock, reset, reg_state);
 				rd_out_val = reg_state.pc + 4;
 				is_jumping = 1'b1;
 				jump_target = { i_effective_addr[31:1], 1'b0 };
+			end
+
+			OPCODE_BRANCH: begin
+				case (funct3)
+					`FUNCT3_BEQ: is_jumping = reg_state.xregs[rs1] == reg_state.xregs[rs2];
+					`FUNCT3_BNE: is_jumping = reg_state.xregs[rs1] != reg_state.xregs[rs2];
+					default:     is_jumping = 1'bX;
+				endcase
+				jump_target = reg_state.pc + b_imm_input;
 			end
 
 			OPCODE_LUI: rd_out_val = u_imm_input;
@@ -238,12 +255,11 @@ module hart_testbench();
 		forever #(CLOCK_PERIOD/2) clk <= ~clk;
 	end
 
-	// Set up the inputs to the design. Each line is a clock cycle.
 	initial begin
 		@(posedge clk); reset <= 1;
 		@(posedge clk); reset <= 0;
 
-		repeat (140) begin
+		repeat (440) begin
 			@(posedge clk);
 		end
 

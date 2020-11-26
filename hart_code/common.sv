@@ -16,6 +16,7 @@ package isa_types;
         OPCODE_JALR,
         OPCODE_OP_IMM,
         OPCODE_OP,
+        OPCODE_BRANCH,
         OPCODE_LOAD,
         OPCODE_STORE
     } opcode_t;
@@ -42,6 +43,7 @@ package isa_types;
             `OPCODE_JALR:   opcode = OPCODE_JALR;
             `OPCODE_OP_IMM: opcode = OPCODE_OP_IMM;
             `OPCODE_OP:     opcode = OPCODE_OP;
+            `OPCODE_BRANCH: opcode = OPCODE_BRANCH;
             `OPCODE_LOAD:   opcode = OPCODE_LOAD;
             `OPCODE_STORE:  opcode = OPCODE_STORE;
             default:        opcode = OPCODE_UNKNOWN;

@@ -16,6 +16,11 @@
 `define FUNCT7_ADD     7'b0000000
 `define FUNCT7_SUB     7'b0100000
 
+`define OPCODE_BRANCH  5'b11000
+`define FUNCT3_BEQ     3'b000
+`define FUNCT3_BNE     3'b001
+// Omitted: BLT, BGE, BLTU, BGEU
+
 `define OPCODE_LOAD    5'b00000
 `define FUNCT3_LB      3'b000
 `define FUNCT3_LH      3'b001

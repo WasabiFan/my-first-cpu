@@ -1,14 +1,12 @@
 int func();
 
 int main() {
-	volatile int foo[20];
-	foo[0] = 4;
-	foo[1] = 6;
-	foo[2] = 9;
-	foo[0] = 3;
-	foo[3] = 1000000000;
+	int data[20];
+	for (int i = 0; i < 20; i++) {
+		data[i] = i;
+	}
 
-	int total = foo[0] + foo[1] + foo[2] + foo[3];
+	int total = data[0] + data[1] + data[2] + data[3];
 	total += func();
 	return total;
 }
