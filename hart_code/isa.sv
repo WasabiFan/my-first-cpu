@@ -1,5 +1,5 @@
 `define SIGEXT(VALUE, FROM, TO) { {(TO-FROM){VALUE[FROM-1]}}, VALUE[FROM-1:0] }
-`define ZEXT(VALUE, FROM, TO) { (TO-FROM)'b0, VALUE }
+`define ZEXT(VALUE, FROM, TO) { {(TO-FROM){1'b0}}, VALUE }
 
 `define OPCODE_LUI     5'b01101
 
@@ -10,9 +10,18 @@
 
 `define OPCODE_OP_IMM  5'b00100
 `define FUNCT3_ADDI    3'b000
+// Omitted: SLTI{U}
+`define FUNCT3_XORI    3'b100
+`define FUNCT3_ORI     3'b110
+`define FUNCT3_ANDI    3'b111
 
 `define OPCODE_OP      5'b01100
 `define FUNCT3_ADD_SUB 3'b000
+// Omitted: SLL, SLT, SLTU
+`define FUNCT3_XOR     3'b100
+// Omitted: SRL, SRA
+`define FUNCT3_OR      3'b110
+`define FUNCT3_AND     3'b111
 `define FUNCT7_ADD     7'b0000000
 `define FUNCT7_SUB     7'b0100000
 
@@ -25,7 +34,8 @@
 `define FUNCT3_LB      3'b000
 `define FUNCT3_LH      3'b001
 `define FUNCT3_LW      3'b010
-// Omitted: LBU, LHU
+`define FUNCT3_LBU     3'b100
+`define FUNCT3_LHU     3'b101
 
 `define OPCODE_STORE   5'b01000
 `define FUNCT3_SB      3'b000

@@ -69,9 +69,10 @@ module memory #( parameter INPUT_PERIPH_LEN, OUTPUT_PERIPH_LEN) (clock, addr, ww
          if (wwidth == write_halfword)
             output_peripherals_mem[addr - OUTPUT_PERIPH_START + 1] <= wdata[15:8];
 
-         if (wwidth == write_halfword || wwidth == write_word)
+         if (wwidth == write_halfword || wwidth == write_word) begin
             output_peripherals_mem[addr - OUTPUT_PERIPH_START + 2] <= wdata[23:16];
             output_peripherals_mem[addr - OUTPUT_PERIPH_START + 3] <= wdata[31:24];
+         end
       end
    end
 

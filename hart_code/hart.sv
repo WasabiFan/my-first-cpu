@@ -121,6 +121,9 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		case (opcode)
 			OPCODE_OP_IMM: case (funct3)
 				`FUNCT3_ADDI: rd_out_val = i_imm_input + reg_state.xregs[rs1];
+				`FUNCT3_XORI: rd_out_val = i_imm_input ^ reg_state.xregs[rs1];
+				`FUNCT3_ORI:  rd_out_val = i_imm_input | reg_state.xregs[rs1];
+				`FUNCT3_ANDI: rd_out_val = i_imm_input & reg_state.xregs[rs1];
 				default: rd_out_val = 'x;
 			endcase
 
@@ -131,6 +134,9 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 						`FUNCT7_SUB: rd_out_val = reg_state.xregs[rs1] - reg_state.xregs[rs2];
 						default:     rd_out_val = 'X;
 					endcase
+					`FUNCT3_XOR:    rd_out_val = reg_state.xregs[rs1] ^ reg_state.xregs[rs2];
+					`FUNCT3_OR:     rd_out_val = reg_state.xregs[rs1] | reg_state.xregs[rs2];
+					`FUNCT3_AND:    rd_out_val = reg_state.xregs[rs1] & reg_state.xregs[rs2];
 					default: rd_out_val = 'X;
 				endcase
 			end
@@ -159,10 +165,12 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 			OPCODE_LUI: rd_out_val = u_imm_input;
 
 			OPCODE_LOAD: case (funct3)
-				`FUNCT3_LB: rd_out_val = `SIGEXT( load_val, 8, XLEN);
-				`FUNCT3_LH: rd_out_val = `SIGEXT( load_val, 16, XLEN);
-				`FUNCT3_LW: rd_out_val = load_val;
-				default:    rd_out_val = 'X;
+				`FUNCT3_LB:  rd_out_val = `SIGEXT( load_val, 8, XLEN);
+				`FUNCT3_LBU: rd_out_val =   `ZEXT( load_val, 8, XLEN);
+				`FUNCT3_LH:  rd_out_val = `SIGEXT( load_val, 16, XLEN);
+				`FUNCT3_LHU: rd_out_val =   `ZEXT( load_val, 16, XLEN);
+				`FUNCT3_LW:  rd_out_val = load_val;
+				default:     rd_out_val = 'X;
 			endcase
 
 			OPCODE_STORE: begin

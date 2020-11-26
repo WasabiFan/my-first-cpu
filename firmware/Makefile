@@ -11,7 +11,7 @@ CFLAGS := $(FLAGS_ARCH) $(CFLAGS_GENERAL)
 
 IMAGE_START_ADDRESS := 0
 
-all: firmware.elf firmware.mif
+all: firmware.elf firmware.mif firmware.d
 
 firmware.o: firmware.c
 	$(CC) -c -o $@ $< $(CFLAGS)
