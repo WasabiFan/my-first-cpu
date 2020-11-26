@@ -5,9 +5,11 @@
 
 import isa_types::*;
 
-module hart(clock, reset, reg_state);
+module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (clock, reset, reg_state, input_peripherals_mem, output_peripherals_mem);
 	input logic clock, reset;
+   input logic [7:0] input_peripherals_mem [INPUT_PERIPH_LEN-1:0];
 	output reg_state_t reg_state;
+   output logic [7:0] output_peripherals_mem [OUTPUT_PERIPH_LEN-1:0];
 
 	// Address of first byte which _isn't_ valid on the stack; used to initialize sp.
 	// The program will begin by allocating space, so this should never be accessed.
@@ -23,12 +25,18 @@ module hart(clock, reset, reg_state);
 		STAGE_WRITEBACK          // Write results to registers or memory
 	} stage, next_stage;
 
-	// Memory (ROM and RAM)
+	// Memory (ROM and RAM, plus memory-mapped peripherals)
 	logic mem_wenable;
    logic [XLEN-1:0] mem_addr;
    logic [XLEN-1:0] mem_wdata, mem_rdata;
    write_width_t mem_wwidth;
-	memory mem(clock, mem_addr, mem_wwidth, mem_wenable, mem_wdata, mem_rdata);
+	memory #(.INPUT_PERIPH_LEN(INPUT_PERIPH_LEN), .OUTPUT_PERIPH_LEN(OUTPUT_PERIPH_LEN)) mem (
+		clock,
+		mem_addr,
+		mem_wwidth, mem_wenable, mem_wdata,
+		mem_rdata,
+		input_peripherals_mem, output_peripherals_mem
+	);
 
 	// the bit pattern of the current instruction
 	logic [ILEN-1:0] instr_bits;
@@ -245,8 +253,11 @@ endmodule
 module hart_testbench();
 	logic clk, reset;
 
+   logic [7:0] input_peripherals_mem ['h20-1:0];
+   logic [7:0] output_peripherals_mem ['h20-1:0];
+
 	reg_state_t reg_state;
-	hart dut (clk, reset, reg_state);
+	hart dut (clk, reset, reg_state, input_peripherals_mem, output_peripherals_mem);
 
 	// Set up the clock
 	parameter CLOCK_PERIOD=100;
@@ -258,9 +269,13 @@ module hart_testbench();
 	initial begin
 		@(posedge clk); reset <= 1;
 		@(posedge clk); reset <= 0;
+		input_peripherals_mem[0] = 8'b1;
 
-		repeat (440) begin
-			@(posedge clk);
+		repeat (50) begin
+			input_peripherals_mem[0] = input_peripherals_mem[0] == 0;
+			repeat(20) begin
+				@(posedge clk);
+			end
 		end
 
 		$stop; // End the simulation

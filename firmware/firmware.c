@@ -1,16 +1,13 @@
-int func();
+// TODO: change to char once we support andi
+#define INPUT_BASE_ADDR ((volatile int*)0x1000)
+#define OUTPUT_BASE_ADDR ((volatile int*)0x1800)
+
+volatile int *LEDR = OUTPUT_BASE_ADDR;
+volatile int *SW = INPUT_BASE_ADDR;
 
 int main() {
-	int data[20];
-	for (int i = 0; i < 20; i++) {
-		data[i] = i;
+	while (1) {
+		LEDR[0] = 1;
+		LEDR[1] = SW[0];
 	}
-
-	int total = data[0] + data[1] + data[2] + data[3];
-	total += func();
-	return total;
-}
-
-int __attribute__ ((noinline)) func() {
-	return 5;
 }
