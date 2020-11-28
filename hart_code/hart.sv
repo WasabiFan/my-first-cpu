@@ -70,7 +70,7 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		mem_wenable = 1'b0;
 		mem_addr = 'X;
 		mem_wdata = 'X;
-		mem_wwidth = write_byte; // don't cate
+		mem_wwidth = write_byte; // don't care
 
 		case (stage)
 			STAGE_INSTRUCTION_FETCH: begin
@@ -179,7 +179,9 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		endcase
 	end
 
-	// opcode computed from the current memory output, rather than the captured instr_bits
+	// Opcode computed from the current memory output, rather than the captured instr_bits.
+	// Used to inform state transitions out of the instruction fetch stage (before we've
+	// put the instruction word through our instr_bits latch).
 	opcode_t speculative_opcode;
 	assign speculative_opcode = extract_opcode(mem_rdata);
 
