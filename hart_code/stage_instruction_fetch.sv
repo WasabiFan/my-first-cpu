@@ -32,11 +32,8 @@ module stage_instruction_fetch(clock, reset, enable, pc, mem_rdata, is_complete,
 	assign is_next_instruction_load = speculative_opcode == OPCODE_LOAD;
 
 	always_comb begin
-		if (enable) begin
-			next_remaining_read_cycles = remaining_read_cycles - 2'b1;
-		end else begin
-			next_remaining_read_cycles = mem_read_latency;
-		end
+		if (enable) next_remaining_read_cycles = remaining_read_cycles - 2'b1;
+		else        next_remaining_read_cycles = mem_read_latency;
 	end
 
 	always_ff @(posedge clock) begin

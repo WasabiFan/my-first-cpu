@@ -15,9 +15,7 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 	localparam STACK_START = 32'hc00;
 	// TODO: having stuff start at address 0 is definitely bad
 	localparam RESET_VECTOR = 32'h0;
-	localparam READ_CYCLE_LATENCY = 2'd2;
 
-	logic [1:0] remaining_read_cycles, next_remaining_read_cycles;
 	enum logic [1:0] {
 		STAGE_INSTRUCTION_FETCH, // Read next instruction from memory
 		STAGE_LOAD,					 // Instruction-specific memory reads (LOAD opcode only)
@@ -71,10 +69,25 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 	assign i_effective_addr = i_imm_input + reg_state.xregs[rs1];
 	assign s_effective_addr = s_imm_input + reg_state.xregs[rs1];
 
-	// store_val: Value to be stored in RAM upon conclusion of writeback stage (STORE opcode only)
 	// load_val: Value which was read from memory upon conclusion of load stage (LOAD opcode only)
 	// 	load_val is not strictly necessary; we could use the memory output without a latch.
-	logic [XLEN-1:0] store_val, load_val;
+	logic [XLEN-1:0] load_val;
+	logic memory_load_is_complete;
+	mem_control_t memory_load_mem_control;
+	stage_memory_load memory_load_stage (
+		clock,
+		reset,
+		stage == STAGE_LOAD,
+		i_effective_addr,
+		mem_rdata,
+		memory_load_is_complete,
+		memory_load_mem_control,
+		load_val
+	);
+
+
+	// store_val: Value to be stored in RAM upon conclusion of writeback stage (STORE opcode only)
+	logic [XLEN-1:0] store_val;
 
 	// memory controller
 	always_comb begin
@@ -88,12 +101,7 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 				mem_ctrl = instruction_fetch_mem_control;
 			end
 			STAGE_LOAD: begin
-				// In theory, it should be impossible to get into the "load" stage unless the
-				// opcode was LOAD, but... better safe than thoroughly confused.
-				case (opcode)
-					OPCODE_LOAD: mem_ctrl.addr = i_effective_addr;
-					default:     mem_ctrl.addr = 'X;
-				endcase
+				mem_ctrl = memory_load_mem_control;
 			end
 			STAGE_WRITEBACK: begin
 				case (opcode)
@@ -204,18 +212,15 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 				end else begin
 					next_stage = STAGE_INSTRUCTION_FETCH;
 				end
-				next_remaining_read_cycles = 'X;
 			end
 			STAGE_LOAD: begin
-				if (remaining_read_cycles) next_stage = STAGE_LOAD;
-				else                       next_stage = STAGE_WRITEBACK;
-				next_remaining_read_cycles = remaining_read_cycles - 2'd1;
+				if (memory_load_is_complete) next_stage = STAGE_WRITEBACK;
+				else                         next_stage = STAGE_LOAD;
 			end
 			STAGE_WRITEBACK: begin
 				next_stage = STAGE_INSTRUCTION_FETCH;
 				if (is_jumping) next_pc = jump_target;
 				else            next_pc = reg_state.pc + 4;
-				next_remaining_read_cycles = READ_CYCLE_LATENCY;
 			end
 		endcase
 	end
@@ -224,17 +229,13 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 	always_ff @(posedge clock) begin
 		if (reset) begin
 			stage <= STAGE_INSTRUCTION_FETCH;
-			remaining_read_cycles <= READ_CYCLE_LATENCY;
 			reg_state.pc <= RESET_VECTOR;
 			reg_state.xregs[0] <= 0;
 			reg_state.xregs[2] <= STACK_START; // sp
 		end else begin
 			case (stage)
 				STAGE_INSTRUCTION_FETCH: begin /* do nothing */ end
-				STAGE_LOAD: begin
-					if (remaining_read_cycles == 0)
-						load_val <= mem_rdata;
-				end
+				STAGE_LOAD: begin /* do nothing */ end
 				STAGE_WRITEBACK: begin
 					case (opcode)
 							OPCODE_OP_IMM, OPCODE_OP,
@@ -250,7 +251,6 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 			endcase
 			stage <= next_stage;
 			reg_state.pc <= next_pc;
-			remaining_read_cycles <= next_remaining_read_cycles;
 		end
 	end
 endmodule
