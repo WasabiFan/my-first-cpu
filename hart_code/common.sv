@@ -7,6 +7,10 @@ package isa_types;
     // one register is x0
     parameter num_regs = 32;
 
+    // For an address set during the rising edge of clock tick "i", the corresponding
+    // data will appear in the "q" output by the rising edge of clock tick "i+2".
+    parameter mem_read_latency = 2'd2;
+
     typedef logic [4:0] rv_reg_t;
 
     typedef enum {
@@ -43,8 +47,7 @@ package isa_types;
         input logic [XLEN-1:0] instr_bits;
         opcode_t opcode;
 
-        // field_opcode[1:0] are always 11
-        case (instr_bits[6:2])
+        case (instr_bits[6:0])
             `OPCODE_LUI:    opcode = OPCODE_LUI;
             `OPCODE_JAL:    opcode = OPCODE_JAL;
             `OPCODE_JALR:   opcode = OPCODE_JALR;

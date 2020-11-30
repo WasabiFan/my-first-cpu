@@ -52,6 +52,20 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		j_imm_input, b_imm_input
 	);
 
+	logic instruction_fetch_is_complete, instruction_fetch_is_next_instruction_load;
+	mem_control_t instruction_fetch_mem_control;
+	stage_instruction_fetch instr_fetch_stage (
+		clock,
+		reset,
+		stage == STAGE_INSTRUCTION_FETCH,
+		reg_state.pc,
+		mem_rdata,
+		instruction_fetch_is_complete,
+		instruction_fetch_mem_control,
+		instr_bits,
+		instruction_fetch_is_next_instruction_load
+	);
+
 	// Computed addresses for memory instructions
 	logic [XLEN-1:0] i_effective_addr, s_effective_addr;
 	assign i_effective_addr = i_imm_input + reg_state.xregs[rs1];
@@ -71,7 +85,7 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 
 		case (stage)
 			STAGE_INSTRUCTION_FETCH: begin
-				mem_ctrl.addr = reg_state.pc;
+				mem_ctrl = instruction_fetch_mem_control;
 			end
 			STAGE_LOAD: begin
 				// In theory, it should be impossible to get into the "load" stage unless the
@@ -176,33 +190,21 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		endcase
 	end
 
-	// Opcode computed from the current memory output, rather than the captured instr_bits.
-	// Used to inform state transitions out of the instruction fetch stage (before we've
-	// put the instruction word through our instr_bits latch).
-	opcode_t speculative_opcode;
-	assign speculative_opcode = extract_opcode(mem_rdata);
-
 	// Stage progression logic (computes next values of state parameters)
 	logic [XLEN-1:0] next_pc;
 	always_comb begin
 		next_pc = reg_state.pc;
 		case (stage)
 			STAGE_INSTRUCTION_FETCH: begin
-				if (remaining_read_cycles) begin
-					next_stage = STAGE_INSTRUCTION_FETCH;
-					next_remaining_read_cycles = remaining_read_cycles - 2'd1;
+				if (instruction_fetch_is_complete) begin
+					// LOAD instructions have an extra stage
+					if (instruction_fetch_is_next_instruction_load) next_stage = STAGE_LOAD;
+					// Every non-LOAD goes straight to the final stage
+					else                                            next_stage = STAGE_WRITEBACK;
 				end else begin
-					case (speculative_opcode)
-						// If the next instruction is an unknown opcode, stall in this state
-						// forever (in essence, halt)
-						OPCODE_UNKNOWN: next_stage = STAGE_INSTRUCTION_FETCH;
-						// LOAD instructions have an extra stage
-						OPCODE_LOAD:    next_stage = STAGE_LOAD;
-						// Every non-LOAD goes straight to the final stage
-						default:        next_stage = STAGE_WRITEBACK;
-					endcase
-					next_remaining_read_cycles = READ_CYCLE_LATENCY;
+					next_stage = STAGE_INSTRUCTION_FETCH;
 				end
+				next_remaining_read_cycles = 'X;
 			end
 			STAGE_LOAD: begin
 				if (remaining_read_cycles) next_stage = STAGE_LOAD;
@@ -228,10 +230,7 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 			reg_state.xregs[2] <= STACK_START; // sp
 		end else begin
 			case (stage)
-				STAGE_INSTRUCTION_FETCH: begin
-					if (remaining_read_cycles == 0)
-						instr_bits <= mem_rdata;
-				end
+				STAGE_INSTRUCTION_FETCH: begin /* do nothing */ end
 				STAGE_LOAD: begin
 					if (remaining_read_cycles == 0)
 						load_val <= mem_rdata;
