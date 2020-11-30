@@ -32,6 +32,13 @@ package isa_types;
         write_word
     } write_width_t;
 
+    typedef struct {
+        logic [XLEN-1:0] addr;
+        logic            wenable;
+        write_width_t    wwidth;
+        logic [XLEN-1:0] wdata;
+    } mem_control_t;
+
     function opcode_t extract_opcode;
         input logic [XLEN-1:0] instr_bits;
         opcode_t opcode;

@@ -25,14 +25,11 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 	} stage, next_stage;
 
 	// Memory (ROM and RAM, plus memory-mapped peripherals)
-	logic mem_wenable;
-   logic [XLEN-1:0] mem_addr;
-   logic [XLEN-1:0] mem_wdata, mem_rdata;
-   write_width_t mem_wwidth;
+	mem_control_t mem_ctrl;
+   logic [XLEN-1:0] mem_rdata;
 	memory #(.INPUT_PERIPH_LEN(INPUT_PERIPH_LEN), .OUTPUT_PERIPH_LEN(OUTPUT_PERIPH_LEN)) mem (
 		clock,
-		mem_addr,
-		mem_wwidth, mem_wenable, mem_wdata,
+		mem_ctrl,
 		mem_rdata,
 		input_peripherals_mem, output_peripherals_mem
 	);
@@ -67,34 +64,34 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 
 	// memory controller
 	always_comb begin
-		mem_wenable = 1'b0;
-		mem_addr = 'X;
-		mem_wdata = 'X;
-		mem_wwidth = write_byte; // don't care
+		mem_ctrl.wenable = 1'b0;
+		mem_ctrl.addr = 'X;
+		mem_ctrl.wdata = 'X;
+		mem_ctrl.wwidth = write_byte; // don't care
 
 		case (stage)
 			STAGE_INSTRUCTION_FETCH: begin
-				mem_addr = reg_state.pc;
+				mem_ctrl.addr = reg_state.pc;
 			end
 			STAGE_LOAD: begin
 				// In theory, it should be impossible to get into the "load" stage unless the
 				// opcode was LOAD, but... better safe than thoroughly confused.
 				case (opcode)
-					OPCODE_LOAD: mem_addr = i_effective_addr;
-					default:     mem_addr = 'X;
+					OPCODE_LOAD: mem_ctrl.addr = i_effective_addr;
+					default:     mem_ctrl.addr = 'X;
 				endcase
 			end
 			STAGE_WRITEBACK: begin
 				case (opcode)
 					OPCODE_STORE: begin
-						mem_addr = s_effective_addr;
-						mem_wenable = 1'b1;
-						mem_wdata = store_val;
+						mem_ctrl.addr = s_effective_addr;
+						mem_ctrl.wenable = 1'b1;
+						mem_ctrl.wdata = store_val;
 						case (funct3)
-							`FUNCT3_SB: mem_wwidth = write_byte;
-							`FUNCT3_SH: mem_wwidth = write_halfword;
-							`FUNCT3_SW: mem_wwidth = write_word;
-							default:    mem_wwidth = write_byte; // don't care
+							`FUNCT3_SB: mem_ctrl.wwidth = write_byte;
+							`FUNCT3_SH: mem_ctrl.wwidth = write_halfword;
+							`FUNCT3_SW: mem_ctrl.wwidth = write_word;
+							default:    mem_ctrl.wwidth = write_byte; // don't care
 						endcase
 					end
 					default: begin /* Do nothing; default above is a non-write */ end
