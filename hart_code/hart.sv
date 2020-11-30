@@ -36,18 +36,10 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 	logic [ILEN-1:0] instr_bits;
 
 	// Instruction decoder
-	opcode_t opcode;
-	rv_reg_t rs1, rs2, rd;
-	logic [2:0] funct3;
-	logic [6:0] funct7;
-	logic [XLEN-1:0] i_imm_input, s_imm_input, u_imm_input, j_imm_input, b_imm_input;
+	decoded_instruction_t curr_instr;
 	instruction_decoder instr_decoder (
 		instr_bits,
-		opcode,
-		rs1, rs2, rd,
-		funct3, funct7,
-		i_imm_input, s_imm_input, u_imm_input,
-		j_imm_input, b_imm_input
+		curr_instr
 	);
 
 	logic instruction_fetch_is_complete, instruction_fetch_is_next_instruction_load;
@@ -66,8 +58,8 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 
 	// Computed addresses for memory instructions
 	logic [XLEN-1:0] i_effective_addr, s_effective_addr;
-	assign i_effective_addr = i_imm_input + reg_state.xregs[rs1];
-	assign s_effective_addr = s_imm_input + reg_state.xregs[rs1];
+	assign i_effective_addr = curr_instr.i_imm_input + reg_state.xregs[curr_instr.rs1];
+	assign s_effective_addr = curr_instr.s_imm_input + reg_state.xregs[curr_instr.rs1];
 
 	// load_val: Value which was read from memory upon conclusion of load stage (LOAD opcode only)
 	// 	load_val is not strictly necessary; we could use the memory output without a latch.
@@ -104,12 +96,12 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 				mem_ctrl = memory_load_mem_control;
 			end
 			STAGE_WRITEBACK: begin
-				case (opcode)
+				case (curr_instr.opcode)
 					OPCODE_STORE: begin
 						mem_ctrl.addr = s_effective_addr;
 						mem_ctrl.wenable = 1'b1;
 						mem_ctrl.wdata = store_val;
-						case (funct3)
+						case (curr_instr.funct3)
 							`FUNCT3_SB: mem_ctrl.wwidth = write_byte;
 							`FUNCT3_SH: mem_ctrl.wwidth = write_halfword;
 							`FUNCT3_SW: mem_ctrl.wwidth = write_word;
@@ -136,25 +128,25 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		is_jumping = 1'b0;
 		jump_target = 'x;
 
-		case (opcode)
-			OPCODE_OP_IMM: case (funct3)
-				`FUNCT3_ADDI: rd_out_val = i_imm_input + reg_state.xregs[rs1];
-				`FUNCT3_XORI: rd_out_val = i_imm_input ^ reg_state.xregs[rs1];
-				`FUNCT3_ORI:  rd_out_val = i_imm_input | reg_state.xregs[rs1];
-				`FUNCT3_ANDI: rd_out_val = i_imm_input & reg_state.xregs[rs1];
+		case (curr_instr.opcode)
+			OPCODE_OP_IMM: case (curr_instr.funct3)
+				`FUNCT3_ADDI: rd_out_val = curr_instr.i_imm_input + reg_state.xregs[curr_instr.rs1];
+				`FUNCT3_XORI: rd_out_val = curr_instr.i_imm_input ^ reg_state.xregs[curr_instr.rs1];
+				`FUNCT3_ORI:  rd_out_val = curr_instr.i_imm_input | reg_state.xregs[curr_instr.rs1];
+				`FUNCT3_ANDI: rd_out_val = curr_instr.i_imm_input & reg_state.xregs[curr_instr.rs1];
 				default: rd_out_val = 'x;
 			endcase
 
 			OPCODE_OP: begin
-				case (funct3)
-					`FUNCT3_ADD_SUB: case (funct7)
-						`FUNCT7_ADD: rd_out_val = reg_state.xregs[rs1] + reg_state.xregs[rs2];
-						`FUNCT7_SUB: rd_out_val = reg_state.xregs[rs1] - reg_state.xregs[rs2];
+				case (curr_instr.funct3)
+					`FUNCT3_ADD_SUB: case (curr_instr.funct7)
+						`FUNCT7_ADD: rd_out_val = reg_state.xregs[curr_instr.rs1] + reg_state.xregs[curr_instr.rs2];
+						`FUNCT7_SUB: rd_out_val = reg_state.xregs[curr_instr.rs1] - reg_state.xregs[curr_instr.rs2];
 						default:     rd_out_val = 'X;
 					endcase
-					`FUNCT3_XOR:    rd_out_val = reg_state.xregs[rs1] ^ reg_state.xregs[rs2];
-					`FUNCT3_OR:     rd_out_val = reg_state.xregs[rs1] | reg_state.xregs[rs2];
-					`FUNCT3_AND:    rd_out_val = reg_state.xregs[rs1] & reg_state.xregs[rs2];
+					`FUNCT3_XOR:    rd_out_val = reg_state.xregs[curr_instr.rs1] ^ reg_state.xregs[curr_instr.rs2];
+					`FUNCT3_OR:     rd_out_val = reg_state.xregs[curr_instr.rs1] | reg_state.xregs[curr_instr.rs2];
+					`FUNCT3_AND:    rd_out_val = reg_state.xregs[curr_instr.rs1] & reg_state.xregs[curr_instr.rs2];
 					default: rd_out_val = 'X;
 				endcase
 			end
@@ -162,7 +154,7 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 			OPCODE_JAL: begin
 				rd_out_val = reg_state.pc + 4;
 				is_jumping = 1'b1;
-				jump_target = reg_state.pc + j_imm_input;
+				jump_target = reg_state.pc + curr_instr.j_imm_input;
 			end
 
 			OPCODE_JALR: begin
@@ -172,17 +164,17 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 			end
 
 			OPCODE_BRANCH: begin
-				case (funct3)
-					`FUNCT3_BEQ: is_jumping = reg_state.xregs[rs1] == reg_state.xregs[rs2];
-					`FUNCT3_BNE: is_jumping = reg_state.xregs[rs1] != reg_state.xregs[rs2];
+				case (curr_instr.funct3)
+					`FUNCT3_BEQ: is_jumping = reg_state.xregs[curr_instr.rs1] == reg_state.xregs[curr_instr.rs2];
+					`FUNCT3_BNE: is_jumping = reg_state.xregs[curr_instr.rs1] != reg_state.xregs[curr_instr.rs2];
 					default:     is_jumping = 1'bX;
 				endcase
-				jump_target = reg_state.pc + b_imm_input;
+				jump_target = reg_state.pc + curr_instr.b_imm_input;
 			end
 
-			OPCODE_LUI: rd_out_val = u_imm_input;
+			OPCODE_LUI: rd_out_val = curr_instr.u_imm_input;
 
-			OPCODE_LOAD: case (funct3)
+			OPCODE_LOAD: case (curr_instr.funct3)
 				`FUNCT3_LB:  rd_out_val = `SIGEXT( load_val, 8, XLEN);
 				`FUNCT3_LBU: rd_out_val =   `ZEXT( load_val, 8, XLEN);
 				`FUNCT3_LH:  rd_out_val = `SIGEXT( load_val, 16, XLEN);
@@ -192,7 +184,7 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 			endcase
 
 			OPCODE_STORE: begin
-				store_val = reg_state.xregs[rs2];
+				store_val = reg_state.xregs[curr_instr.rs2];
 			end
 			OPCODE_UNKNOWN: begin /* Do nothing */ end
 		endcase
@@ -237,12 +229,12 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 				STAGE_INSTRUCTION_FETCH: begin /* do nothing */ end
 				STAGE_LOAD: begin /* do nothing */ end
 				STAGE_WRITEBACK: begin
-					case (opcode)
+					case (curr_instr.opcode)
 							OPCODE_OP_IMM, OPCODE_OP,
 							OPCODE_JAL, OPCODE_JALR,
 							OPCODE_LUI, OPCODE_LOAD: begin
-								if (rd) // "if" prevents writing to x0
-									reg_state.xregs[rd] <= rd_out_val;
+								if (curr_instr.rd) // "if" prevents writing to x0
+									reg_state.xregs[curr_instr.rd] <= rd_out_val;
 							end
 							OPCODE_STORE: begin /* Do nothing */ end
 							OPCODE_UNKNOWN: begin /* Do nothing */ end

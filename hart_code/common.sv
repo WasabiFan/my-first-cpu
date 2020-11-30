@@ -43,6 +43,14 @@ package isa_types;
         logic [XLEN-1:0] wdata;
     } mem_control_t;
 
+    typedef struct {
+        opcode_t opcode;
+        rv_reg_t rs1, rs2, rd;
+        logic [2:0] funct3;
+        logic [6:0] funct7;
+        logic [XLEN-1:0] i_imm_input, s_imm_input, u_imm_input, j_imm_input, b_imm_input;
+    } decoded_instruction_t;
+
     function opcode_t extract_opcode;
         input logic [XLEN-1:0] instr_bits;
         opcode_t opcode;
