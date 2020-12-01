@@ -42,6 +42,11 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		curr_instr
 	);
 
+	// Computed addresses for memory instructions
+	logic [XLEN-1:0] i_effective_addr, s_effective_addr;
+	assign i_effective_addr = curr_instr.i_imm_input + reg_state.xregs[curr_instr.rs1];
+	assign s_effective_addr = curr_instr.s_imm_input + reg_state.xregs[curr_instr.rs1];
+
 	logic instruction_fetch_is_complete, instruction_fetch_is_next_instruction_load;
 	mem_control_t instruction_fetch_mem_control;
 	stage_instruction_fetch instr_fetch_stage (
@@ -55,11 +60,6 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		instr_bits,
 		instruction_fetch_is_next_instruction_load
 	);
-
-	// Computed addresses for memory instructions
-	logic [XLEN-1:0] i_effective_addr, s_effective_addr;
-	assign i_effective_addr = curr_instr.i_imm_input + reg_state.xregs[curr_instr.rs1];
-	assign s_effective_addr = curr_instr.s_imm_input + reg_state.xregs[curr_instr.rs1];
 
 	// load_val: Value which was read from memory upon conclusion of load stage (LOAD opcode only)
 	// 	load_val is not strictly necessary; we could use the memory output without a latch.
@@ -77,9 +77,20 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		load_val
 	);
 
-
-	// store_val: Value to be stored in RAM upon conclusion of writeback stage (STORE opcode only)
+	// Value to be stored in RAM upon conclusion of writeback stage (if store_enable is high, i.e. STORE opcode only)
 	logic [XLEN-1:0] store_val;
+	// Value to be stored in register rd upon conclusion of writeback stage (if rd_out_enable is high)
+	logic [XLEN-1:0] rd_out_val;
+	// Address to jump to at the conclusion of the writeback stage (if jump_enable is high)
+	logic [XLEN-1:0] jump_target_addr;
+	logic store_enable, rd_out_enable, jump_enable;
+	instruction_compute compute (
+		reg_state, load_val,
+		curr_instr,
+		store_val, store_enable,
+		rd_out_val, rd_out_enable,
+		jump_target_addr, jump_enable
+	);
 
 	// memory controller
 	always_comb begin
@@ -96,97 +107,18 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 				mem_ctrl = memory_load_mem_control;
 			end
 			STAGE_WRITEBACK: begin
-				case (curr_instr.opcode)
-					OPCODE_STORE: begin
-						mem_ctrl.addr = s_effective_addr;
-						mem_ctrl.wenable = 1'b1;
-						mem_ctrl.wdata = store_val;
-						case (curr_instr.funct3)
-							`FUNCT3_SB: mem_ctrl.wwidth = write_byte;
-							`FUNCT3_SH: mem_ctrl.wwidth = write_halfword;
-							`FUNCT3_SW: mem_ctrl.wwidth = write_word;
-							default:    mem_ctrl.wwidth = write_byte; // don't care
-						endcase
-					end
-					default: begin /* Do nothing; default above is a non-write */ end
-				endcase
-			end
-		endcase
-	end
-
-	// Value to be stored in register rd upon conclusion of writeback stage (LOAD, OP_IMM)
-	logic [XLEN-1:0] rd_out_val;
-
-	logic is_jumping;
-	logic [XLEN-1:0] jump_target;
-
-	// Computation for writeback
-	always_comb begin
-		rd_out_val = 'x;
-		store_val = 'x;
-
-		is_jumping = 1'b0;
-		jump_target = 'x;
-
-		case (curr_instr.opcode)
-			OPCODE_OP_IMM: case (curr_instr.funct3)
-				`FUNCT3_ADDI: rd_out_val = curr_instr.i_imm_input + reg_state.xregs[curr_instr.rs1];
-				`FUNCT3_XORI: rd_out_val = curr_instr.i_imm_input ^ reg_state.xregs[curr_instr.rs1];
-				`FUNCT3_ORI:  rd_out_val = curr_instr.i_imm_input | reg_state.xregs[curr_instr.rs1];
-				`FUNCT3_ANDI: rd_out_val = curr_instr.i_imm_input & reg_state.xregs[curr_instr.rs1];
-				default: rd_out_val = 'x;
-			endcase
-
-			OPCODE_OP: begin
-				case (curr_instr.funct3)
-					`FUNCT3_ADD_SUB: case (curr_instr.funct7)
-						`FUNCT7_ADD: rd_out_val = reg_state.xregs[curr_instr.rs1] + reg_state.xregs[curr_instr.rs2];
-						`FUNCT7_SUB: rd_out_val = reg_state.xregs[curr_instr.rs1] - reg_state.xregs[curr_instr.rs2];
-						default:     rd_out_val = 'X;
+				if (store_enable) begin
+					mem_ctrl.addr = s_effective_addr;
+					mem_ctrl.wenable = 1'b1;
+					mem_ctrl.wdata = store_val;
+					case (curr_instr.funct3)
+						`FUNCT3_SB: mem_ctrl.wwidth = write_byte;
+						`FUNCT3_SH: mem_ctrl.wwidth = write_halfword;
+						`FUNCT3_SW: mem_ctrl.wwidth = write_word;
+						default:    mem_ctrl.wwidth = write_byte; // don't care
 					endcase
-					`FUNCT3_XOR:    rd_out_val = reg_state.xregs[curr_instr.rs1] ^ reg_state.xregs[curr_instr.rs2];
-					`FUNCT3_OR:     rd_out_val = reg_state.xregs[curr_instr.rs1] | reg_state.xregs[curr_instr.rs2];
-					`FUNCT3_AND:    rd_out_val = reg_state.xregs[curr_instr.rs1] & reg_state.xregs[curr_instr.rs2];
-					default: rd_out_val = 'X;
-				endcase
+				end
 			end
-
-			OPCODE_JAL: begin
-				rd_out_val = reg_state.pc + 4;
-				is_jumping = 1'b1;
-				jump_target = reg_state.pc + curr_instr.j_imm_input;
-			end
-
-			OPCODE_JALR: begin
-				rd_out_val = reg_state.pc + 4;
-				is_jumping = 1'b1;
-				jump_target = { i_effective_addr[31:1], 1'b0 };
-			end
-
-			OPCODE_BRANCH: begin
-				case (curr_instr.funct3)
-					`FUNCT3_BEQ: is_jumping = reg_state.xregs[curr_instr.rs1] == reg_state.xregs[curr_instr.rs2];
-					`FUNCT3_BNE: is_jumping = reg_state.xregs[curr_instr.rs1] != reg_state.xregs[curr_instr.rs2];
-					default:     is_jumping = 1'bX;
-				endcase
-				jump_target = reg_state.pc + curr_instr.b_imm_input;
-			end
-
-			OPCODE_LUI: rd_out_val = curr_instr.u_imm_input;
-
-			OPCODE_LOAD: case (curr_instr.funct3)
-				`FUNCT3_LB:  rd_out_val = `SIGEXT( load_val, 8, XLEN);
-				`FUNCT3_LBU: rd_out_val =   `ZEXT( load_val, 8, XLEN);
-				`FUNCT3_LH:  rd_out_val = `SIGEXT( load_val, 16, XLEN);
-				`FUNCT3_LHU: rd_out_val =   `ZEXT( load_val, 16, XLEN);
-				`FUNCT3_LW:  rd_out_val = load_val;
-				default:     rd_out_val = 'X;
-			endcase
-
-			OPCODE_STORE: begin
-				store_val = reg_state.xregs[curr_instr.rs2];
-			end
-			OPCODE_UNKNOWN: begin /* Do nothing */ end
 		endcase
 	end
 
@@ -211,8 +143,8 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 			end
 			STAGE_WRITEBACK: begin
 				next_stage = STAGE_INSTRUCTION_FETCH;
-				if (is_jumping) next_pc = jump_target;
-				else            next_pc = reg_state.pc + 4;
+				if (jump_enable) next_pc = jump_target_addr;
+				else             next_pc = reg_state.pc + 4;
 			end
 		endcase
 	end
@@ -229,16 +161,11 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 				STAGE_INSTRUCTION_FETCH: begin /* do nothing */ end
 				STAGE_LOAD: begin /* do nothing */ end
 				STAGE_WRITEBACK: begin
-					case (curr_instr.opcode)
-							OPCODE_OP_IMM, OPCODE_OP,
-							OPCODE_JAL, OPCODE_JALR,
-							OPCODE_LUI, OPCODE_LOAD: begin
-								if (curr_instr.rd) // "if" prevents writing to x0
-									reg_state.xregs[curr_instr.rd] <= rd_out_val;
-							end
-							OPCODE_STORE: begin /* Do nothing */ end
-							OPCODE_UNKNOWN: begin /* Do nothing */ end
-					endcase
+					if (rd_out_enable) begin
+						// avoid writing to x0
+						if (curr_instr.rd)
+							reg_state.xregs[curr_instr.rd] <= rd_out_val;
+					end
 				end
 			endcase
 			stage <= next_stage;
