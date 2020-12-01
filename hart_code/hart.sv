@@ -42,10 +42,6 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		curr_instr
 	);
 
-	// Computed addresses for memory instructions
-	logic [XLEN-1:0] i_effective_addr, s_effective_addr;
-	assign i_effective_addr = curr_instr.i_imm_input + reg_state.xregs[curr_instr.rs1];
-	assign s_effective_addr = curr_instr.s_imm_input + reg_state.xregs[curr_instr.rs1];
 
 	logic instruction_fetch_is_complete, instruction_fetch_is_next_instruction_load;
 	mem_control_t instruction_fetch_mem_control;
@@ -60,6 +56,10 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 		instr_bits,
 		instruction_fetch_is_next_instruction_load
 	);
+
+	// Computed addresses for memory instructions (I-type)
+	logic [XLEN-1:0] i_effective_addr;
+	assign i_effective_addr = curr_instr.i_imm_input + reg_state.xregs[curr_instr.rs1];
 
 	// load_val: Value which was read from memory upon conclusion of load stage (LOAD opcode only)
 	// 	load_val is not strictly necessary; we could use the memory output without a latch.
@@ -84,43 +84,25 @@ module hart #( parameter INPUT_PERIPH_LEN = 'h20, OUTPUT_PERIPH_LEN = 'h20 ) (cl
 	// Address to jump to at the conclusion of the writeback stage (if jump_enable is high)
 	logic [XLEN-1:0] jump_target_addr;
 	logic store_enable, rd_out_enable, jump_enable;
-	instruction_compute compute (
-		reg_state, load_val,
+	logic writeback_is_complete;
+	mem_control_t writeback_mem_control;
+	stage_writeback writeback_stage (
+		stage == STAGE_WRITEBACK,
+		reg_state,
+		load_val,
 		curr_instr,
-		store_val, store_enable,
+		writeback_is_complete,
+		writeback_mem_control,
 		rd_out_val, rd_out_enable,
 		jump_target_addr, jump_enable
 	);
 
 	// memory controller
-	always_comb begin
-		mem_ctrl.wenable = 1'b0;
-		mem_ctrl.addr = 'X;
-		mem_ctrl.wdata = 'X;
-		mem_ctrl.wwidth = write_byte; // don't care
-
-		case (stage)
-			STAGE_INSTRUCTION_FETCH: begin
-				mem_ctrl = instruction_fetch_mem_control;
-			end
-			STAGE_LOAD: begin
-				mem_ctrl = memory_load_mem_control;
-			end
-			STAGE_WRITEBACK: begin
-				if (store_enable) begin
-					mem_ctrl.addr = s_effective_addr;
-					mem_ctrl.wenable = 1'b1;
-					mem_ctrl.wdata = store_val;
-					case (curr_instr.funct3)
-						`FUNCT3_SB: mem_ctrl.wwidth = write_byte;
-						`FUNCT3_SH: mem_ctrl.wwidth = write_halfword;
-						`FUNCT3_SW: mem_ctrl.wwidth = write_word;
-						default:    mem_ctrl.wwidth = write_byte; // don't care
-					endcase
-				end
-			end
-		endcase
-	end
+	always_comb case (stage)
+		STAGE_INSTRUCTION_FETCH: mem_ctrl = instruction_fetch_mem_control;
+		STAGE_LOAD:              mem_ctrl = memory_load_mem_control;
+		STAGE_WRITEBACK:         mem_ctrl = writeback_mem_control;
+	endcase
 
 	// Stage progression logic (computes next values of state parameters)
 	logic [XLEN-1:0] next_pc;

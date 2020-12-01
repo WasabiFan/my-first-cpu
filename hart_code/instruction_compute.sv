@@ -9,7 +9,7 @@ module instruction_compute (
 		curr_instr,
 		store_val, store_enable,
 		rd_out_val, rd_out_enable,
-		jump_target_addr, jump_enable,
+		jump_target_addr, jump_enable
 	);
 	input reg_state_t reg_state;
 	input logic [XLEN-1:0] load_val;
