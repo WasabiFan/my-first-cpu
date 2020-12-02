@@ -148,7 +148,8 @@ module instruction_compute_testbench();
 	initial begin
 		rs1 <= 4; rs2 <= 8; reg_state.pc <= 32'h100;
 		opcode <= OPCODE_OP_IMM; funct3 <= `FUNCT3_ADDI;                           x4 <= 10;          i_imm <= 32'd5; #delay;
-		opcode <= OPCODE_OP;     funct3 <= `FUNCT3_ADD_SUB; funct7 <= `FUNCT7_ADD; x4 <= 11; x8 <= 6; i_imm <= 'X;    #delay;
+		opcode <= OPCODE_OP;     funct3 <= `FUNCT3_ADD_SUB; funct7 <= `FUNCT7_ADD; x4 <= 11; x8 <= 6; i_imm <= 'X;    #(delay/2);
+		;                                                   funct7 <= `FUNCT7_SUB;                                    #(delay/2);
 		opcode <= OPCODE_JAL;    j_imm <= 32'hA8;                                                                     #delay;
 		opcode <= OPCODE_JALR;   i_imm <= 32'hA8;                                  x4 <= 32'h300;                     #delay;
 		opcode <= OPCODE_BRANCH; b_imm <= 32'hA8;           funct3 <= `FUNCT3_BEQ; x4 <= 15; x8 <= 12;                #(delay/2);

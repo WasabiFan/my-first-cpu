@@ -89,7 +89,7 @@ module ram_testbench();
 		@(posedge clk);
 		@(posedge clk);
 
-      // Halfword-aligned write, upper, half word, overwritting upper halfword from first write
+      // Halfword-aligned write, upper, half word, overwriting upper halfword from first write
 		@(posedge clk); mem_wenable <= 1; mem_addr <= 32'h12; mem_wwidth <= write_halfword; mem_wdata <= 32'hFEDC;
 		@(posedge clk); mem_wenable <= 0;
 		@(posedge clk);
