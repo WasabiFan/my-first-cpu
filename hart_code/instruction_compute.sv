@@ -21,6 +21,11 @@ module instruction_compute (
 	logic [XLEN-1:0] i_effective_addr;
 	assign i_effective_addr = curr_instr.i_imm_input + reg_state.xregs[curr_instr.rs1];
 
+	logic signed [XLEN-1:0] rs1_val_signed, rs2_val_signed, i_imm_signed;
+	assign rs1_val_signed = reg_state.xregs[curr_instr.rs1];
+	assign rs2_val_signed = reg_state.xregs[curr_instr.rs2];
+	assign i_imm_signed = curr_instr.i_imm_input;
+
 	always_comb begin
 		rd_out_val = 'x;
 		store_val = 'x;
@@ -34,11 +39,13 @@ module instruction_compute (
 			OPCODE_OP_IMM: begin
 				rd_out_enable = 1'b1;
 				case (curr_instr.funct3)
-					`FUNCT3_ADDI: rd_out_val = curr_instr.i_imm_input + reg_state.xregs[curr_instr.rs1];
-					`FUNCT3_XORI: rd_out_val = curr_instr.i_imm_input ^ reg_state.xregs[curr_instr.rs1];
-					`FUNCT3_ORI:  rd_out_val = curr_instr.i_imm_input | reg_state.xregs[curr_instr.rs1];
-					`FUNCT3_ANDI: rd_out_val = curr_instr.i_imm_input & reg_state.xregs[curr_instr.rs1];
-					default: rd_out_val = 'x;
+					`FUNCT3_ADDI:  rd_out_val  =  reg_state.xregs[curr_instr.rs1] + curr_instr.i_imm_input;
+					`FUNCT3_SLTI:  rd_out_val  =                   rs1_val_signed < i_imm_signed;
+					`FUNCT3_SLTIU: rd_out_val =  reg_state.xregs[curr_instr.rs1] < curr_instr.i_imm_input;
+					`FUNCT3_XORI:  rd_out_val  =  reg_state.xregs[curr_instr.rs1] ^ curr_instr.i_imm_input;
+					`FUNCT3_ORI:   rd_out_val  =  reg_state.xregs[curr_instr.rs1] | curr_instr.i_imm_input;
+					`FUNCT3_ANDI:  rd_out_val  =  reg_state.xregs[curr_instr.rs1] & curr_instr.i_imm_input;
+					default:       rd_out_val = 'x;
 				endcase
 			end
 
@@ -50,6 +57,8 @@ module instruction_compute (
 						`FUNCT7_SUB: rd_out_val = reg_state.xregs[curr_instr.rs1] - reg_state.xregs[curr_instr.rs2];
 						default:     rd_out_val = 'X;
 					endcase
+					`FUNCT3_SLT:    rd_out_val =                  rs1_val_signed < rs2_val_signed;
+					`FUNCT3_SLTU:   rd_out_val = reg_state.xregs[curr_instr.rs1] < reg_state.xregs[curr_instr.rs2];
 					`FUNCT3_XOR:    rd_out_val = reg_state.xregs[curr_instr.rs1] ^ reg_state.xregs[curr_instr.rs2];
 					`FUNCT3_OR:     rd_out_val = reg_state.xregs[curr_instr.rs1] | reg_state.xregs[curr_instr.rs2];
 					`FUNCT3_AND:    rd_out_val = reg_state.xregs[curr_instr.rs1] & reg_state.xregs[curr_instr.rs2];
