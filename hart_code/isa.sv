@@ -15,11 +15,12 @@
 `define FUNCT3_XORI    3'b100
 `define FUNCT3_ORI     3'b110
 `define FUNCT3_ANDI    3'b111
-// Omitted: SLLI, SRLI, SRAI
+`define FUNCT3_SLLI    3'b001
+`define FUNCT3_SRLI_SRAI 3'b101
 
 `define OPCODE_OP      7'b0110011
 `define FUNCT3_ADD_SUB 3'b000
-// Omitted: SLL
+`define FUNCT3_SLL     3'b001
 `define FUNCT3_SLT     3'b010
 `define FUNCT3_SLTU    3'b011
 `define FUNCT3_XOR     3'b100
