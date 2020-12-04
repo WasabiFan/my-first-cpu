@@ -11,7 +11,7 @@ module instruction_decoder (instr_bits, decoded_instruction);
 
 	assign decoded_instruction.rd = instr_bits[11:7];
 	assign decoded_instruction.rs1 = instr_bits[19:15];
-	assign decoded_instruction.rs2 = instr_bits[23:20];
+	assign decoded_instruction.rs2 = instr_bits[24:20];
 
 	assign decoded_instruction.funct3 = instr_bits[14:12];
 	assign decoded_instruction.funct7 = instr_bits[31:25];
