@@ -160,10 +160,10 @@ module hart_testbench();
 	logic clk, reset;
 
    logic [7:0] input_peripherals_mem ['h20-1:0];
-   logic [7:0] output_peripherals_mem ['h20-1:0];
+   logic [7:0] output_peripherals_mem ['h50-1:0];
 
 	reg_state_t reg_state;
-	hart dut (clk, reset, reg_state, input_peripherals_mem, output_peripherals_mem);
+	hart #( .OUTPUT_PERIPH_LEN('h50) ) dut (clk, reset, reg_state, input_peripherals_mem, output_peripherals_mem);
 
 	// Set up the clock
 	parameter CLOCK_PERIOD=100;
@@ -175,11 +175,14 @@ module hart_testbench();
 	initial begin
 		@(posedge clk); reset <= 1;
 		@(posedge clk); reset <= 0;
-		input_peripherals_mem[0] = 8'b1;
+		input_peripherals_mem['h10] = 8'b0;
+		input_peripherals_mem['h11] = 8'b1;
+		input_peripherals_mem['h12] = 8'b0;
+		input_peripherals_mem['h13] = 8'b0;
 
 		repeat (50) begin
-			input_peripherals_mem[0] = input_peripherals_mem[0] == 0;
-			repeat(20) begin
+			input_peripherals_mem['h11] = input_peripherals_mem['h11] == 0;
+			repeat(400) begin
 				@(posedge clk);
 			end
 		end

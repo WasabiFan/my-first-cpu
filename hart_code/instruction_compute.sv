@@ -94,9 +94,13 @@ module instruction_compute (
 
 			OPCODE_BRANCH: begin
 				case (curr_instr.funct3)
-					`FUNCT3_BEQ: jump_enable = reg_state.xregs[curr_instr.rs1] == reg_state.xregs[curr_instr.rs2];
-					`FUNCT3_BNE: jump_enable = reg_state.xregs[curr_instr.rs1] != reg_state.xregs[curr_instr.rs2];
-					default:     jump_enable = 1'b0;
+					`FUNCT3_BEQ:  jump_enable = reg_state.xregs[curr_instr.rs1] == reg_state.xregs[curr_instr.rs2];
+					`FUNCT3_BNE:  jump_enable = reg_state.xregs[curr_instr.rs1] != reg_state.xregs[curr_instr.rs2];
+					`FUNCT3_BLT:  jump_enable = signed'(reg_state.xregs[curr_instr.rs1]) <  signed'(reg_state.xregs[curr_instr.rs2]);
+					`FUNCT3_BLTU: jump_enable =         reg_state.xregs[curr_instr.rs1]  <          reg_state.xregs[curr_instr.rs2];
+					`FUNCT3_BGE:  jump_enable = signed'(reg_state.xregs[curr_instr.rs1]) >= signed'(reg_state.xregs[curr_instr.rs2]);
+					`FUNCT3_BGEU: jump_enable =         reg_state.xregs[curr_instr.rs1]  >=         reg_state.xregs[curr_instr.rs2];
+					default:      jump_enable = 1'b0;
 				endcase
 				jump_target_addr = reg_state.pc + curr_instr.b_imm_input;
 			end
@@ -104,6 +108,11 @@ module instruction_compute (
 			OPCODE_LUI: begin
 				rd_out_enable = 1'b1;
 				rd_out_val = curr_instr.u_imm_input;
+			end
+
+			OPCODE_AUIPC: begin
+				rd_out_enable = 1'b1;
+				rd_out_val = reg_state.pc + curr_instr.u_imm_input;
 			end
 
 			OPCODE_LOAD: begin

@@ -1,13 +1,11 @@
 TOOLPREFIX := riscv64-unknown-elf-
 CC := $(TOOLPREFIX)gcc
-LD := $(TOOLPREFIX)gcc
+LD := $(TOOLPREFIX)ld
 OBJCOPY := $(TOOLPREFIX)objcopy
 OBJDUMP := $(TOOLPREFIX)objdump
 
-FLAGS_ARCH := -march=rv32i -mabi=ilp32 -mcmodel=medany
-
-CFLAGS_GENERAL := -ffreestanding -fwrapv -fno-pic -fno-stack-protector -Wall -Werror -O2
-CFLAGS := $(FLAGS_ARCH) $(CFLAGS_GENERAL)
+CFLAGS_GENERAL := -mcmodel=medany -march=rv32i -mabi=ilp32 -ffreestanding -fwrapv -fno-pic -fno-stack-protector -Wall -Werror -O2
+CFLAGS := $(CFLAGS_GENERAL)
 
 IMAGE_START_ADDRESS := 0
 
@@ -18,7 +16,7 @@ firmware.o: firmware.c
 
 firmware.elf: firmware.o
 	# TODO: -T linkerscript.ld
-	$(LD) $(FLAGS_ARCH) -nostartfiles -entry:main -N -e main -Ttext $(IMAGE_START_ADDRESS) -o $@ $<
+	$(LD) -m elf32lriscv -nostartfiles -entry:main -N -e main -Ttext $(IMAGE_START_ADDRESS) --section-start=.bss=0x800 --no-relax -o $@ $<
 
 firmware.img: firmware.elf
 	$(OBJCOPY) -O binary $< $@

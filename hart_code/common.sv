@@ -16,6 +16,7 @@ package isa_types;
     typedef enum {
         OPCODE_UNKNOWN,
         OPCODE_LUI,
+        OPCODE_AUIPC,
         OPCODE_JAL,
         OPCODE_JALR,
         OPCODE_OP_IMM,
@@ -57,6 +58,7 @@ package isa_types;
 
         case (instr_bits[6:0])
             `OPCODE_LUI:    opcode = OPCODE_LUI;
+            `OPCODE_AUIPC:  opcode = OPCODE_AUIPC;
             `OPCODE_JAL:    opcode = OPCODE_JAL;
             `OPCODE_JALR:   opcode = OPCODE_JALR;
             `OPCODE_OP_IMM: opcode = OPCODE_OP_IMM;

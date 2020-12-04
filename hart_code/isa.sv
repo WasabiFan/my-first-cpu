@@ -3,6 +3,8 @@
 
 `define OPCODE_LUI     7'b0110111
 
+`define OPCODE_AUIPC   7'b0010111
+
 `define OPCODE_JAL     7'b1101111
 `define OPCODE_JALR    7'b1100111
 // JALR does use "I" encoding and thus has a funct3 (0), but shares opcode with no other
@@ -33,6 +35,10 @@
 `define OPCODE_BRANCH  7'b1100011
 `define FUNCT3_BEQ     3'b000
 `define FUNCT3_BNE     3'b001
+`define FUNCT3_BLT     3'b100
+`define FUNCT3_BGE     3'b101
+`define FUNCT3_BLTU    3'b110
+`define FUNCT3_BGEU    3'b111
 // Omitted: BLT, BGE, BLTU, BGEU
 
 `define OPCODE_LOAD    7'b0000011
