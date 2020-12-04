@@ -64,10 +64,10 @@ module memory #( parameter INPUT_PERIPH_LEN, OUTPUT_PERIPH_LEN) (clock, ctrl, rd
       if (ctrl.wenable && address_target == target_output_peripheral) begin
          output_peripherals_mem[ctrl.addr - OUTPUT_PERIPH_START] <= ctrl.wdata[7:0];
 
-         if (ctrl.wwidth == write_halfword)
+         if (ctrl.wwidth == write_halfword || ctrl.wwidth == write_word)
             output_peripherals_mem[ctrl.addr - OUTPUT_PERIPH_START + 1] <= ctrl.wdata[15:8];
 
-         if (ctrl.wwidth == write_halfword || ctrl.wwidth == write_word) begin
+         if (ctrl.wwidth == write_word) begin
             output_peripherals_mem[ctrl.addr - OUTPUT_PERIPH_START + 2] <= ctrl.wdata[23:16];
             output_peripherals_mem[ctrl.addr - OUTPUT_PERIPH_START + 3] <= ctrl.wdata[31:24];
          end
