@@ -33,7 +33,7 @@ module ram (clock, addr, wwidth, wenable, wdata, rdata);
       effective_wdata = (wdata << (addr[1:0] * 8));
 
       // Since this is providing output, we must ensure that it isn't affected by input
-      // changes after the read occurs.
+      // changes (to addr) after the read occurs.
       rdata = effective_rdata >> (addr_offset * 8);
    end
 

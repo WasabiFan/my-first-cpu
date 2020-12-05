@@ -74,11 +74,9 @@ module memory #( parameter INPUT_PERIPH_LEN, OUTPUT_PERIPH_LEN) (clock, ctrl, rd
       end
    end
 
-   internal_rom rom (
-      // The underlying chips' addresses are word-oriented; for ROM, we just don't support
-      // non-word-aligned reads.
-      rom_addr[10:2],
+   rom rom (
       clock,
+      rom_addr,
       rom_rdata
    );
 
