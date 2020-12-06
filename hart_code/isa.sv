@@ -39,7 +39,6 @@
 `define FUNCT3_BGE     3'b101
 `define FUNCT3_BLTU    3'b110
 `define FUNCT3_BGEU    3'b111
-// Omitted: BLT, BGE, BLTU, BGEU
 
 `define OPCODE_LOAD    7'b0000011
 `define FUNCT3_LB      3'b000

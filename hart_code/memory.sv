@@ -188,13 +188,13 @@ module memory_testbench();
 		@(posedge clk);
 		@(posedge clk);
 
-      // Read back the first word of the out peripherals section
+      // Read back the first word of the out peripherals section (doesn't output anything)
 		@(posedge clk);                   mem_addr <= 32'h1800;
 		@(posedge clk);
 		@(posedge clk);
 		@(posedge clk);
 
-      // Read back the last word of the out peripherals section
+      // Read back the last word of the out peripherals section (doesn't output anything)
 		@(posedge clk);                   mem_addr <= 32'h181c;
 		@(posedge clk);
 		@(posedge clk);
