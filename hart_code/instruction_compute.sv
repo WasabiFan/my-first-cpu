@@ -21,11 +21,6 @@ module instruction_compute (
 	logic [XLEN-1:0] i_effective_addr;
 	assign i_effective_addr = curr_instr.i_imm_input + reg_state.xregs[curr_instr.rs1];
 
-	// logic signed [XLEN-1:0] rs1_val_signed, rs2_val_signed, i_imm_signed;
-	// assign rs1_val_signed = reg_state.xregs[curr_instr.rs1];
-	// assign rs2_val_signed = reg_state.xregs[curr_instr.rs2];
-	// assign i_imm_signed = curr_instr.i_imm_input;
-
 	logic [4:0] shamnt;
 	assign shamnt = curr_instr.i_imm_input[4:0];
 	logic shift_type;
